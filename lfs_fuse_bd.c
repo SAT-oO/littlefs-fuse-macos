@@ -12,13 +12,18 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <assert.h>
-#if !defined(__FreeBSD__)
+#include <sys/stat.h>
+#if defined(__linux__)
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 #elif defined(__FreeBSD__)
 #define BLKSSZGET DIOCGSECTORSIZE
-#define BLKGETSIZE DIOCGMEDIASIZE
+#define BLKGETSIZE64 DIOCGMEDIASIZE
 #include <sys/disk.h>
+#elif defined(__APPLE__)
+#include <sys/disk.h>
+#else
+#error unsupported platform
 #endif
 
 
@@ -32,22 +37,48 @@ int lfs_fuse_bd_create(struct lfs_config *cfg, const char *path) {
 
     // get sector size
     if (!cfg->block_size) {
+#if defined(__APPLE__)
+        uint32_t bsize;
+        if (ioctl(fd, DKIOCGETBLOCKSIZE, &bsize) == 0) {
+            cfg->block_size = bsize;
+        } else {
+            struct stat st;
+            if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode)) {
+                return -errno;
+            }
+            cfg->block_size = 512;
+        }
+#else
         long ssize;
         int err = ioctl(fd, BLKSSZGET, &ssize);
         if (err) {
             return -errno;
         }
         cfg->block_size = ssize;
+#endif
     }
 
     // get size in sectors
     if (!cfg->block_count) {
+#if defined(__APPLE__)
+        uint64_t count;
+        if (ioctl(fd, DKIOCGETBLOCKCOUNT, &count) == 0) {
+            cfg->block_count = count;
+        } else {
+            struct stat st;
+            if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode)) {
+                return -errno;
+            }
+            cfg->block_count = st.st_size / cfg->block_size;
+        }
+#else
         uint64_t size;
         int err = ioctl(fd, BLKGETSIZE64, &size);
         if (err) {
             return -errno;
         }
         cfg->block_count = size / cfg->block_size;
+#endif
     }
 
     // setup function pointers

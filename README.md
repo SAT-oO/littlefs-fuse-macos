@@ -18,6 +18,7 @@ since littlefs is intended for embedded systems.
 Currently littlefs-fuse has been tested on the following OSs:
 - [Linux](#usage-on-linux)
 - [FreeBSD](#usage-on-freebsd)
+- [macOS](#usage-on-macos)
 
 ## Usage on Linux
 
@@ -130,6 +131,66 @@ After using littlefs, you can unmount and detach the loop device:
 cd ..
 umount mount
 sudo mdconfig -du 0
+```
+
+## Usage on macOS
+
+littlefs-fuse requires [macFUSE](https://osxfuse.github.io/) version 4 or higher.
+You can install it with Homebrew:
+
+``` bash
+brew install --cask macfuse
+```
+
+After installing macFUSE, log out and back in (or reboot) so the kernel
+extension is loaded.
+
+Once you have cloned littlefs-fuse, you can compile the program with make:
+
+``` bash
+make
+```
+
+This should have built the `lfs` program in the top-level directory.
+
+On macOS, the easiest way to get a block device for testing is a regular
+file. Create a 1 MB image:
+
+``` bash
+dd if=/dev/zero of=image bs=512 count=2048
+```
+
+littlefs-fuse has two modes of operation, formatting and mounting.
+
+To format a block device, pass the `--format` flag. Note! This will erase any
+data on the block device!
+
+``` bash
+./lfs --format image
+```
+
+To mount, run littlefs-fuse with a block device and a mountpoint:
+
+``` bash
+mkdir mount
+./lfs image mount
+```
+
+Once mounted, the littlefs filesystem will be accessible through the
+mountpoint. You can now use the littlefs like you would any other filesystem:
+
+``` bash
+cd mount
+echo "hello" > hi.txt
+ls
+cat hi.txt
+```
+
+After using littlefs, you can unmount:
+
+``` bash
+cd ..
+umount mount
 ```
 
 ## Limitations

@@ -36,6 +36,11 @@ override CFLAGS += -D __BSD_VISIBLE
 override LFLAGS += -L /usr/local/lib
 endif
 
+ifeq ($(OS), Darwin)
+override CFLAGS += -I /usr/local/include
+override LFLAGS += -L /usr/local/lib
+endif
+
 all: $(TARGET)
 
 asm: $(ASM)
